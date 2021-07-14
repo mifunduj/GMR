@@ -1,0 +1,2 @@
+# GMR
+Gaussian Mixture Regression
