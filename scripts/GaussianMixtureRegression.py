@@ -83,6 +83,99 @@ def fuse_data(file,n=2,n_col=17):
     data=ordered(data)
     return data
 
+def normalize_fuse_data(file,n=2,n_col=17):
+# Normalise and fuse data
+# Same parameters and return as fuse_data
+    dict_data = dict()
+    max_time_list=[]
+    data_list=[]
+    n_list=[]
+    n_stamp_list=0
+    n_begin=0
+    n_end=0
+    for i in range(n):
+        dict_data["data_list_" +str(i+1)] =[]
+    for i in range(1,n+1):
+        s=str(i)
+        dict_data["data_list_" +str(i)],n_stamp=read_file(file + s )
+        n_list.append(n_stamp)
+        n_stamp_list=n_stamp_list+n_stamp
+    for name in dict_data.keys():
+        max_time=(dict_data[name][-1])[0]
+        max_time_list.append(max_time)
+    mean_time = sum(max_time_list)/n
+    for name in dict_data.keys():
+        dict_data[name][1::,0] = dict_data[name][1::,0]*mean_time/(dict_data[name][-1])[0]
+    for name in dict_data:
+        data_list.append(dict_data[name])
+    data=np.zeros([n_stamp_list,n_col])
+    for j in range(n):
+        n_post=n_list[j]
+        n_begin=n_end
+        n_end=n_begin+n_post
+        for i in range(n_begin,n_end):
+            data[i,:]=[try_float(x) for x in data_list[j][i-n_begin]]
+    data=ordered(data)
+    print("Data has been fused and normalized in time")
+    print("Execution time is", mean_time ,"secondes")
+    return data
+
+# Ref: Baxter Humanoid Robot Kinematics by Robert L. Williams II
+def end_pos(data):
+    # Baxter geometry constants
+    l0 = 270.35
+    l1 = 69.00
+    l2 = 364.35
+    l3 = 69.00
+    l4 = 374.29
+    l5 = 10.00
+    l6 = 368.30
+    L = 278
+    h = 64
+    H = 1104
+    n_joints=7
+    #-----------------------------
+    n_row, n_col = data.shape
+    c = np.zeros([n_row, n_col])
+    s = np.zeros([n_row, n_col])
+
+    if n_col==n_joints:
+        for i in range(n_row):
+            c[i,:] = np.cos(data[i,:])
+            s[i,:] = np.sin(data[i,:])
+
+        a = s[:,0]*s[:,2] + c[:,0]*s[:,1]*c[:,2]
+        b = s[:,0]*c[:,2] - c[:,0]*s[:,1]*s[:,2]
+        d = c[:,0]*s[:,2] - s[:,0]*s[:,1]*c[:,2]
+        f = c[:,0]*s[:,2] + s[:,0]*s[:,1]*s[:,2]
+        g = s[:,1]*s[:,3] - c[:,1]*c[:,2]*c[:,3]
+        h = s[:,1]*c[:,3] + c[:,1]*c[:,2]*s[:,3]
+
+        A = a*s[:,3] - c[:,0]*c[:,1]*c[:,3]
+        B = a*c[:,3] + c[:,0]*c[:,1]*c[:,3]
+        D = d*s[:,3] + s[:,0]*c[:,1]*c[:,3]
+        F = d*c[:,3] - s[:,0]*s[:,1]*s[:,3]
+        G = g*s[:,4] - c[:,1]*s[:,2]*c[:,4]
+        H = g*c[:,4] + c[:,1]*s[:,2]*s[:,4]
+
+        x = l1*c[:,0] + l2*c[:,0]*c[:,1] - l3*a - l4*A - l5*(b*s[:,4]-B*c[:,4])
+        y = l1*s[:,0] + l2*s[:,0]*c[:,1] - l3*d + l4*D + l5*(f*s[:,4]+F*c[:,4])
+        z =-l2*s[:,1] - l3*c[:,1]*c[:,2] - l4*h + l5*H
+
+        return x, y, z
+    else:
+        print(" Error : Number of columns doesn't correspond to number of joints")
+        return None
+
+# Compute error
+def pos_error(desired_pos, real_pos):
+    if desired_pos.size == real_pos.size:
+        error = np.zeros(real_pos.size)
+        error = desired_pos - real_pos
+        return error
+    else:
+        print("Error : desired position and real position doesn't have the same size")
+
 # Find the best number of components based on Bayesian Information Criterion(BIC)
 def best_n_components(data,np_out=16,nc_begin=10,nc_end=50):
 # BIC is computed for number of components from nc_begin to nc_end

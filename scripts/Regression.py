@@ -21,12 +21,12 @@ def main():
                 help='first number of components during reshearch of best number of components')
     parser.add_argument('-ne','--n_end',default=30,type=int,
                 help='last number of components during reshearch of best number of components')
-    parser.add_argument('-s','--sigma_filtre',default=.4,type=float,
+    parser.add_argument('-s','--sigma_filtre',default=3.5,type=float,
                 help='variance for the gaussian filter')
     args=parser.parse_args()
 #------------------------------------------------------------------------------------------------
     n_out=args.n_parameters-args.n_input
-    data=gmr.fuse_data(args.file,args.number,args.n_parameters)
+    data=gmr.normalize_fuse_data(args.file,args.number,args.n_parameters)
     data_f=gmr.gaussian_filter(data,args.sigma_filtre)
     best_value=gmr.best_n_components(data_f,n_out,args.n_begin,args.n_end)
     gmm=GM(n_components=best_value)
